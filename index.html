@@ -47,6 +47,9 @@
             border-radius: 5px;
             border: none;
             font-size: 16px;
+            background: #121214;
+            color: white;
+            border: 1px solid #323238;
         }
         .btn-enviar {
             background: #00e676;
@@ -74,9 +77,8 @@
         .voto-sucesso { color: #ffd700; font-size: 14px; margin-top: 5px; }
     </style>
 
-    <!-- Scripts CDN do Firebase Corretos (Versao Compat v8 estável) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- Importa o script do Socket.io do seu próprio servidor Render -->
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
@@ -133,34 +135,22 @@
     <!-- Área Restrita -->
     <div id="area-restrita" class="escondido">
         <h2 style="color: #ffd700;">Painel do luffysdrk</h2>
-        <p>Sugestões enviadas pelos fãs (Salvas no Banco):</p>
+        <p>Sugestões enviadas pelos fãs (Salvas no Mongo):</p>
         <div class="secao-admin" id="lista-sugestoes">
             <p style="color:#888;">Carregando sugestões...</p>
         </div>
-        <button onclick="zerarVotos()" style="margin-top:15px; background:#e67600; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; margin-right:10px;">Zerar Votos para Próxima Live</button>
+        <button onclick="zerarVotos()" style="margin-top:15px; background:#e67600; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; margin-right:10px;">Zerar Votos e Mensagens para Próxima Live</button>
         <button onclick="deslogar()" style="margin-top:15px; background:#ff4444; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Sair do Painel</button>
     </div>
 </div>
 
 <script>
-    // Suas credenciais do Firebase
-    const firebaseConfig = {
-        apiKey: "AIzaSyBjx1NKjsjtjzDSobVNr-oFYoCeM8Z0eYg",
-        authDomain: "live-blox-fruits.firebaseapp.com",
-        databaseURL: "https://live-blox-fruits-default-rtdb.firebaseio.com",
-        projectId: "live-blox-fruits",
-        storageBucket: "live-blox-fruits.firebasestorage.app",
-        messagingSenderId: "1013702872768",
-        appId: "1:1013702872768:web:31ad8ca2efbf16e8cce725"
-    };
-    
-    // Inicializa o Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    // Conecta automaticamente na instância do Socket io do servidor
+    const socket = io();
 
     // Controle Local de Voto Único
     function verificarSeJaVotou() {
-        if (localStorage.getItem('jaVotou') === 'true') {
+        if (localStorage.getItem('jaVotouLive') === 'true') {
             desativarBotoesVoto();
         }
     }
@@ -172,32 +162,68 @@
         document.getElementById('msg-ja-votou').classList.remove('escondido');
     }
 
-    // Ouvinte em tempo real para os Contadores de Voto
-    db.ref('votos').on('value', (snapshot) => {
-        const dados = snapshot.val() || { opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 };
+    // Atualiza dinamicamente as informações textuais dos contadores na tela
+    function atualizarContadoresNaTela(dados) {
         document.getElementById('votos-opcao1').innerText = dados.opcao1 || 0;
         document.getElementById('votos-opcao2').innerText = dados.opcao2 || 0;
         document.getElementById('votos-opcao3').innerText = dados.opcao3 || 0;
         document.getElementById('votos-opcao4').innerText = dados.opcao4 || 0;
-    }, (error) => {
-        console.error("Erro ao ler votos: ", error);
-        alert("Erro de permissão ao ler dados. Verifique as Regras do Realtime Database!");
+    }
+
+    // Carregamento Inicial carregando dados das Rotas da API Express do Mongo
+    window.addEventListener('load', async () => {
+        verificarSeJaVotou();
+        
+        try {
+            const resVotos = await fetch('/api/live/votos');
+            const dadosVotos = await resVotos.json();
+            atualizarContadoresNaTela(dadosVotos);
+        } catch (err) {
+            console.error("Erro ao carregar votos iniciais:", err);
+        }
+
+        if(localStorage.getItem('logadoLive') === 'true') {
+            mostrarPainelAdmin();
+            carregarSugestoesDoBanco();
+        }
     });
 
-    // Função de Computar Voto
-    function votar(idOpcao) {
-        if (localStorage.getItem('jaVotou') === 'true') return;
+    // Ouvinte em tempo real via Socket.io para quando qualquer usuário computar um voto
+    socket.on('atualizarVotosGlobais', (dados) => {
+        atualizarContadoresNaTela(dados);
+    });
 
-        let refVoto = db.ref('votos/' + idOpcao);
-        refVoto.transaction((votosAtuais) => {
-            return (votosAtuais || 0) + 1;
-        }).then(() => {
-            localStorage.setItem('jaVotou', 'true');
-            desativarBotoesVoto();
-        }).catch((error) => {
+    // Ouvinte em tempo real para o painel administrativo receber sugestões novas instantaneamente
+    socket.on('novaSugestaoAdmin', (dados) => {
+        if(localStorage.getItem('logadoLive') === 'true') {
+            adicionarSugestaoNaTela(dados.usuario, dados.texto);
+        }
+    });
+
+    socket.on('limparSugestoesAdmin', () => {
+        document.getElementById('lista-sugestoes').innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
+    });
+
+    // Função de Computar Voto via Requisição POST da API
+    async function votar(idOpcao) {
+        if (localStorage.getItem('jaVotouLive') === 'true') return;
+
+        try {
+            const res = await fetch('/api/live/votar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ opcaoId: idOpcao })
+            });
+
+            if (res.ok) {
+                localStorage.setItem('jaVotouLive', 'true');
+                desativarBotoesVoto();
+            } else {
+                alert("Erro ao computar voto no servidor.");
+            }
+        } catch (error) {
             console.error("Erro ao votar: ", error);
-            alert("Não foi possível registrar seu voto. Verifique se o banco de dados está aberto nas regras.");
-        });
+        }
     }
 
     // Fluxo do Menu de Sugestão
@@ -214,70 +240,83 @@
         document.getElementById('passo-nome').classList.remove('escondido');
     }
 
-    function enviarSugestao() {
+    async function enviarSugestao() {
         let nome = document.getElementById('input-nome').value;
         if(nome.trim() === "") {
             alert("Digite seu nome!");
             return;
         }
 
-        db.ref('sugestoes').push({
-            usuario: nome,
-            texto: sugestaoTemporaria,
-            timestamp: Date.now()
-        }).then(() => {
-            alert("Obrigado! Sua sugestão foi enviada para o luffysdrk.");
-            document.getElementById('input-sugestao').value = "";
-            document.getElementById('input-nome').value = "";
-            document.getElementById('passo-nome').classList.add('escondido');
-            document.getElementById('passo-sugestao').classList.remove('escondido');
-        }).catch((error) => {
-            console.error("Erro ao enviar sugestão: ", error);
-            alert("Erro ao enviar! O Firebase bloqueou a gravação da mensagem.");
-        });
-    }
-
-    // Ouvinte em tempo real para carregar a Lista de Mensagens no Painel Admin
-    db.ref('sugestoes').on('value', (snapshot) => {
-        let lista = document.getElementById('lista-sugestoes');
-        lista.innerHTML = "";
-        
-        if(!snapshot.exists()) {
-            lista.innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
-            return;
-        }
-
-        snapshot.forEach((childSnapshot) => {
-            const dados = childSnapshot.val();
-            lista.innerHTML = `<p><strong>${dados.usuario}:</strong> ${dados.texto}</p>` + lista.innerHTML; 
-        });
-    }, (error) => {
-        console.error("Erro nas sugestões: ", error);
-    });
-
-    // Função Administrativa para Resetar Votações
-    function zerarVotos() {
-        if(confirm("Tem certeza que quer zerar a votação para começar uma nova live?")) {
-            db.ref('votos').set({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }).then(() => {
-                alert("Votação zerada!");
-            }).catch((error) => {
-                alert("Erro ao zerar: " + error.message);
+        try {
+            const res = await fetch('/api/live/sugerir', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ usuario: nome, texto: sugestaoTemporaria })
             });
+
+            if (res.ok) {
+                alert("Obrigado! Sua sugestão foi enviada para o luffysdrk.");
+                document.getElementById('input-sugestao').value = "";
+                document.getElementById('input-nome').value = "";
+                document.getElementById('passo-nome').classList.add('escondido');
+                document.getElementById('passo-sugestao').classList.remove('escondido');
+            } else {
+                alert("Erro ao processar sugestão.");
+            }
+        } catch (error) {
+            console.error("Erro ao enviar sugestão: ", error);
         }
     }
 
-    // Login Administrativo
-    if(localStorage.getItem('logado') === 'true') {
-        mostrarPainelAdmin();
+    // Carregar Lista de Sugestões por requisição ao acessar o Painel Admin
+    async function carregarSugestoesDoBanco() {
+        try {
+            const res = await fetch('/api/live/sugestoes');
+            const lista = await res.json();
+            let divLista = document.getElementById('lista-sugestoes');
+            divLista.innerHTML = "";
+            
+            if(lista.length === 0) {
+                divLista.innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
+                return;
+            }
+            lista.forEach(item => {
+                adicionarSugestaoNaTela(item.usuario, item.texto);
+            });
+        } catch (err) {
+            console.error("Erro ao carregar lista de sugestões:", err);
+        }
     }
 
+    function adicionarSugestaoNaTela(usuario, texto) {
+        let divLista = document.getElementById('lista-sugestoes');
+        if(divLista.innerHTML.includes("Nenhuma sugestão enviada")) divLista.innerHTML = "";
+        divLista.innerHTML = `<p><strong>${usuario}:</strong> ${texto}</p>` + divLista.innerHTML;
+    }
+
+    // Função Administrativa para Limpar/Zerar Dados no MongoDB
+    async function zerarVotos() {
+        if(confirm("Tem certeza que quer zerar a votação e limpar as mensagens para começar uma nova live?")) {
+            try {
+                const res = await fetch('/api/live/resetar', { method: 'POST' });
+                if(res.ok) {
+                    alert("Banco de dados da live limpo com sucesso!");
+                }
+            } catch (err) {
+                alert("Erro ao se conectar ao servidor para redefinir.");
+            }
+        }
+    }
+
+    // Login Administrativo local
     function fazerLogin() {
         let usuarioInput = prompt("Digite seu usuário:");
         let senhaInput = prompt("Digite sua senha:");
 
         if(usuarioInput === "luffysdrk" && senhaInput === "deussssssss8") {
-            localStorage.setItem('logado', 'true');
+            localStorage.setItem('logadoLive', 'true');
             mostrarPainelAdmin();
+            carregarSugestoesDoBanco();
             alert("Bem-vindo ao Painel, luffysdrk!");
         } else {
             alert("Usuário ou senha incorretos!");
@@ -290,12 +329,10 @@
     }
 
     function deslogar() {
-        localStorage.removeItem('logado');
+        localStorage.removeItem('logadoLive');
         document.getElementById('area-restrita').classList.add('escondido');
         document.getElementById('div-botao-login').classList.remove('escondido');
     }
-
-    verificarSeJaVotou();
 </script>
 
 </body>
