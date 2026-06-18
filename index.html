@@ -1,276 +1,211 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Planta Fácil - Renilson</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live do luffysdrk - Blox Fruits</title>
     <style>
         body {
-            margin: 0;
-            background: #1a1a1a;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Arial', sans-serif;
+            background-color: #121214;
+            color: #ffffff;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #202024;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        h1 { color: #00e676; }
+        .btn-opcao {
+            background: #29292e;
             color: white;
-            touch-action: none;
-        }
-        h1 { margin: 10px; font-size: 1.2rem; color: #4CAF50; }
-        
-        canvas {
-            background: white;
-            border: 3px solid #4CAF50;
-            border-radius: 8px;
-            cursor: crosshair;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            padding: 10px;
-            width: 95%;
-            max-width: 500px;
-        }
-
-        button {
-            padding: 12px 5px;
-            font-size: 14px;
-            font-weight: bold;
-            border: none;
+            border: 2px solid #00e676;
+            padding: 15px;
+            margin: 10px 0;
+            width: 100%;
+            font-size: 18px;
             border-radius: 8px;
             cursor: pointer;
-            background: #333;
-            color: white;
             transition: 0.2s;
         }
-
-        button:active { transform: scale(0.95); }
-
-        .btn-active { background: #4CAF50 !important; color: white; box-shadow: 0 0 10px #4CAF50; }
-        
-        .btn-danger { background: #d32f2f; }
-        .btn-save { background: #1976D2; }
-
-        .repo-list {
-            margin-top: 15px;
-            width: 90%;
-            max-width: 400px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-        .repo-item {
-            display: flex;
-            justify-content: space-between;
-            background: #333;
+        .btn-opcao:hover { background: #00e676; color: black; }
+        .contador { font-weight: bold; color: #00e676; margin-top: 5px; }
+        input[type="text"] {
+            width: 80%;
             padding: 10px;
-            margin-bottom: 5px;
-            border-radius: 6px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
         }
+        .btn-enviar {
+            background: #00e676;
+            color: black;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        /* Área Restrita */
+        #area-restrita {
+            margin-top: 30px;
+            padding: 20px;
+            border-top: 2px dashed #444;
+        }
+        .secao-admin {
+            background: #1a1a1e;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .escondido { display: none; }
     </style>
 </head>
 <body>
 
-<h1>Planta Fácil do Renilson</h1>
+<div class="container">
+    <h1>Qual o conteúdo da Live de hoje?</h1>
+    <p>Vote na sua opção favorita ou sugira algo abaixo!</p>
 
-<canvas id="canvas"></canvas>
+    <!-- Opções de Voto -->
+    <div>
+        <button class="btn-opcao" onclick="votar('opcao1')">Caçar Frutas / Spawnar Boss</button>
+        <div class="contador">Votos: <span id="votos-opcao1">0</span></div>
+    </div>
+    
+    <div>
+        <button class="btn-opcao" onclick="votar('opcao2')">PvP com Seguidores</button>
+        <div class="contador">Votos: <span id="votos-opcao2">0</span></div>
+    </div>
 
-<div class="controls">
-    <button id="modeWall" class="btn-active" onclick="setMode('wall')">🧱 PAREDE</button>
-    <button id="modeText" onclick="setMode('text')">🏷️ NOME/MEDIDA</button>
-    <button class="btn-danger" onclick="undoLine()">↩️ DESFAZER</button>
+    <div>
+        <button class="btn-opcao" onclick="votar('opcao3')">Ajudando em Raids</button>
+        <div class="contador">Votos: <span id="votos-opcao3">0</span></div>
+    </div>
+
+    <hr style="border: 1px solid #323238; margin: 30px 0;">
+
+    <!-- Seção de Sugestão -->
+    <h3>Tem outra ideia? Sugira aqui:</h3>
     
-    <button onclick="zoomIn()">🔍 +</button>
-    <button onclick="zoomOut()">🔍 -</button>
-    <button onclick="newRepo()">🆕 LIMPAR</button>
-    
-    <button class="btn-save" onclick="saveRepo()">💾 SALVAR</button>
-    <button class="btn-save" onclick="download()">🖼️ BAIXAR FOTO</button>
+    <!-- Passo 1: Digitar a sugestão -->
+    <div id="passo-sugestao">
+        <input type="text" id="input-sugestao" placeholder="Ex: Girar fruta e dar pro chat...">
+        <br>
+        <button class="btn-enviar" onclick="proximoPasso()">Avançar</button>
+    </div>
+
+    <!-- Passo 2: Digitar o nome (Escondido no início) -->
+    <div id="passo-nome" class="escondido">
+        <p>Agora, digite seu nome do TikTok/Roblox:</p>
+        <input type="text" id="input-nome" placeholder="Seu nome/Nick...">
+        <br>
+        <button class="btn-enviar" onclick="enviarSugestao()">Enviar Sugestão</button>
+    </div>
+
+    <!-- Botão de Login do Admin (Soca sumirá quando logado) -->
+    <div id="div-botao-login" style="margin-top: 40px;">
+        <button style="background:transparent; color:#555; border:none; cursor:pointer;" onclick="fazerLogin()">Lugar Restrito (Admin)</button>
+    </div>
+
+    <!-- Área Restrita (Só aparece para você após o login) -->
+    <div id="area-restrita" class="escondido">
+        <h2 style="color: #ffd700;">Painel do luffysdrk</h2>
+        <p>Sugestões enviadas pelos fãs:</p>
+        <div class="secao-admin" id="lista-sugestoes">
+            <!-- As sugestões vão aparecer aqui -->
+            <p style="color:#888;">Nenhuma sugestão enviada ainda nesta sessão.</p>
+        </div>
+        <button onclick="deslogar()" style="margin-top:10px; background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;">Sair do Painel</button>
+    </div>
 </div>
 
-<div class="repo-list" id="repoList"></div>
-
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const grid = 30; // Tamanho do quadradinho
-
-let zoom = 1;
-let offsetX = 0;
-let offsetY = 0;
-let lines = [];
-let texts = [];
-let mode = 'wall'; // 'wall' ou 'text'
-
-let isDrawing = false;
-let startX, startY, curX, curY;
-
-function setMode(m) {
-    mode = m;
-    document.getElementById('modeWall').className = (m === 'wall' ? 'btn-active' : '');
-    document.getElementById('modeText').className = (m === 'text' ? 'btn-active' : '');
-}
-
-function resizeCanvas() {
-    canvas.width = window.innerWidth * 0.95;
-    canvas.height = window.innerHeight * 0.60;
-    redraw();
-}
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-
-function zoomIn() { zoom += 0.1; redraw(); }
-function zoomOut() { zoom = Math.max(0.5, zoom - 0.1); redraw(); }
-
-function redraw() {
-    // Limpa tudo
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.fillStyle = "white";
-    ctx.fillRect(0,0,canvas.width, canvas.height);
-
-    // Aplica Zoom e Pan
-    ctx.setTransform(zoom, 0, 0, zoom, offsetX, offsetY);
-
-    // Desenha Grid
-    ctx.beginPath();
-    ctx.strokeStyle = "#e0e0e0";
-    ctx.lineWidth = 1;
-    for(let x=0; x<2000; x+=grid) { ctx.moveTo(x,0); ctx.lineTo(x,2000); }
-    for(let y=0; y<2000; y+=grid) { ctx.moveTo(0,y); ctx.lineTo(2000,y); }
-    ctx.stroke();
-
-    // Desenha Paredes Salvas
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 5;
-    lines.forEach(l => {
-        ctx.beginPath();
-        ctx.moveTo(l.x1, l.y1);
-        ctx.lineTo(l.x2, l.y2);
-        ctx.stroke();
-    });
-
-    // Desenha Textos
-    ctx.fillStyle = "#d32f2f";
-    ctx.font = "bold 14px Arial";
-    texts.forEach(t => {
-        ctx.fillText(t.text, t.x, t.y);
-    });
-
-    // Desenha Linha Guia (enquanto arrasta)
-    if(isDrawing && mode === 'wall') {
-        ctx.strokeStyle = "rgba(76, 175, 80, 0.5)";
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(curX, curY);
-        ctx.stroke();
+    // --- Sistema de Votos Locais ---
+    function votar(idOpcao) {
+        let elemento = document.getElementById('votos-' + idOpcao);
+        let votosAtuais = parseInt(elemento.innerText);
+        elemento.innerText = votosAtuais + 1;
     }
-}
 
-function getMousePos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-        x: (clientX - rect.left - offsetX) / zoom,
-        y: (clientY - rect.top - offsetY) / zoom
-    };
-}
+    // --- Sistema de Fluxo de Sugestão ---
+    let sugestaoTemporaria = "";
 
-canvas.addEventListener("pointerdown", (e) => {
-    const pos = getMousePos(e);
-    // Arredonda para o grid mais próximo
-    startX = Math.round(pos.x / grid) * grid;
-    startY = Math.round(pos.y / grid) * grid;
-    
-    if(mode === 'text') {
-        const val = prompt("O que deseja escrever? (Ex: Sala, 3m, Cozinha)");
-        if(val) {
-            texts.push({text: val, x: pos.x, y: pos.y});
-            redraw();
+    function proximoPasso() {
+        let sugestao = document.getElementById('input-sugestao').value;
+        if(sugestao.trim() === "") {
+            alert("Digite uma sugestão primeiro!");
+            return;
         }
-    } else {
-        isDrawing = true;
-        curX = startX;
-        curY = startY;
+        sugestaoTemporaria = sugestao;
+        document.getElementById('passo-sugestao').classList.add('escondido');
+        document.getElementById('passo-nome').classList.remove('escondido');
     }
-});
 
-canvas.addEventListener("pointermove", (e) => {
-    if(!isDrawing) return;
-    const pos = getMousePos(e);
-    curX = Math.round(pos.x / grid) * grid;
-    curY = Math.round(pos.y / grid) * grid;
-    redraw();
-});
+    function enviarSugestao() {
+        let nome = document.getElementById('input-nome').value;
+        if(nome.trim() === "") {
+            alert("Digite seu nome!");
+            return;
+        }
 
-canvas.addEventListener("pointerup", () => {
-    if(isDrawing && mode === 'wall') {
-        if(startX !== curX || startY !== curY) {
-            lines.push({x1: startX, y1: startY, x2: curX, y2: curY});
+        // Salva na lista (visível apenas na sessão atual do admin)
+        adicionarSugestaoAoPainel(nome, sugestaoTemporaria);
+
+        alert("Obrigado! Sua sugestão foi enviada para o luffysdrk.");
+        
+        // Reseta o formulário
+        document.getElementById('input-sugestao').value = "";
+        document.getElementById('input-nome').value = "";
+        document.getElementById('passo-nome').classList.add('escondido');
+        document.getElementById('passo-sugestao').classList.remove('escondido');
+    }
+
+    function adicionarSugestaoAoPainel(nome, texto) {
+        let lista = document.getElementById('lista-sugestoes');
+        if(lista.innerHTML.includes("Nenhuma sugestão enviada")) {
+            lista.innerHTML = "";
+        }
+        lista.innerHTML += `<p><strong>${nome}:</strong> ${texto}</p>`;
+    }
+
+    // --- Sistema de Login do Admin (luffysdrk) ---
+    // Verifica se você já estava logado antes
+    if(localStorage.getItem('logado') === 'true') {
+        mostrarPainelAdmin();
+    }
+
+    function fazerLogin() {
+        let usuarioInput = prompt("Digite seu usuário:");
+        let senhaInput = prompt("Digite sua senha:");
+
+        // ATENÇÃO: Seus dados solicitados estão aqui.
+        if(usuarioInput === "luffysdrk" && senhaInput === "deussssssss8") {
+            localStorage.setItem('logado', 'true');
+            mostrarPainelAdmin();
+            alert("Bem-vindo de volta, luffysdrk!");
+        } else {
+            alert("Usuário ou senha incorretos!");
         }
     }
-    isDrawing = false;
-    redraw();
-});
 
-function undoLine() { 
-    if(mode === 'wall') lines.pop(); 
-    else texts.pop();
-    redraw(); 
-}
-
-function download() {
-    const link = document.createElement("a");
-    link.download = "planta-renilson.png";
-    link.href = canvas.toDataURL();
-    link.click();
-}
-
-function saveRepo() {
-    let name = prompt("Dê um nome para esta planta:");
-    if(!name) return;
-    let saved = JSON.parse(localStorage.getItem("plantas_pai")) || {};
-    saved[name] = {lines, texts};
-    localStorage.setItem("plantas_pai", JSON.stringify(saved));
-    renderRepos();
-}
-
-function renderRepos() {
-    const list = document.getElementById("repoList");
-    list.innerHTML = "";
-    let saved = JSON.parse(localStorage.getItem("plantas_pai")) || {};
-    for(let n in saved) {
-        let div = document.createElement("div");
-        div.className = "repo-item";
-        div.innerHTML = `<span onclick="loadRepo('${n}')" style="cursor:pointer">📂 ${n}</span>
-                         <button onclick="deleteRepo('${n}')" style="padding:2px 8px; background:red">X</button>`;
-        list.appendChild(div);
+    function mostrarPainelAdmin() {
+        document.getElementById('area-restrita').classList.remove('escondido');
+        document.getElementById('div-botao-login').classList.add('escondido'); // Esconde o botão para os outros
     }
-}
 
-function loadRepo(n) {
-    let saved = JSON.parse(localStorage.getItem("plantas_pai")) || {};
-    lines = saved[n].lines;
-    texts = saved[n].texts;
-    redraw();
-}
-
-function deleteRepo(n) {
-    let saved = JSON.parse(localStorage.getItem("plantas_pai")) || {};
-    delete saved[n];
-    localStorage.setItem("plantas_pai", JSON.stringify(saved));
-    renderRepos();
-}
-
-function newRepo() {
-    if(confirm("Limpar tudo e começar do zero?")) {
-        lines = []; texts = []; redraw();
+    function deslogar() {
+        localStorage.removeItem('logado');
+        document.getElementById('area-restrita').classList.add('escondido');
+        document.getElementById('div-botao-login').classList.remove('escondido');
     }
-}
-
-renderRepos();
 </script>
+
 </body>
 </html>
