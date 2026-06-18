@@ -7,7 +7,11 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            background-color: #121214;
+            background-image: linear-gradient(rgba(18, 18, 20, 0.8), rgba(18, 18, 20, 0.8)), url('258d8fb0c87008b7e54db90f15a0f5ce~tplv-tiktokx-cropcenter_100_100.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
             color: #ffffff;
             text-align: center;
             padding: 20px;
@@ -15,10 +19,11 @@
         .container {
             max-width: 600px;
             margin: 0 auto;
-            background: #202024;
+            background: rgba(32, 32, 36, 0.9);
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
         }
         h1 { color: #00e676; }
         .btn-opcao {
@@ -142,7 +147,6 @@
 </div>
 
 <script>
-    // Correção automática de dados antigos travados
     try {
         const teste = localStorage.getItem('votos_live');
         if (teste && (!teste.includes('opcao1') || teste.includes('undefined'))) {
@@ -150,7 +154,6 @@
         }
     } catch(e) { localStorage.clear(); }
 
-    // Garante que a memória está pronta
     if (!localStorage.getItem('votos_live')) {
         localStorage.setItem('votos_live', JSON.stringify({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }));
     }
@@ -158,7 +161,6 @@
         localStorage.setItem('sugestoes_live', JSON.stringify([]));
     }
 
-    // Carrega tudo ao abrir a página
     window.addEventListener('load', () => {
         atualizarTela();
         if (localStorage.getItem('logadoLive') === 'true') {
@@ -169,13 +171,11 @@
     function atualizarTela() {
         const votos = JSON.parse(localStorage.getItem('votos_live'));
         
-        // Atualiza os números da tela
         document.getElementById('votos-opcao1').innerText = votos.opcao1 || 0;
         document.getElementById('votos-opcao2').innerText = votos.opcao2 || 0;
         document.getElementById('votos-opcao3').innerText = votos.opcao3 || 0;
         document.getElementById('votos-opcao4').innerText = votos.opcao4 || 0;
 
-        // Se a pessoa já votou, bloqueia os botões para ela
         if (localStorage.getItem('jaVotouLive') === 'true') {
             for (let i = 1; i <= 4; i++) {
                 document.getElementById('btn-opcao' + i).disabled = true;
@@ -188,7 +188,6 @@
             document.getElementById('msg-ja-votou').classList.add('escondido');
         }
 
-        // Atualiza as mensagens recebidas no painel
         const lista = JSON.parse(localStorage.getItem('sugestoes_live'));
         let divLista = document.getElementById('lista-sugestoes');
         divLista.innerHTML = "";
@@ -202,20 +201,17 @@
         });
     }
 
-    // Função para computar voto
     function votar(idOpcao) {
         if (localStorage.getItem('jaVotouLive') === 'true') return;
 
         const votos = JSON.parse(localStorage.getItem('votos_live'));
         votos[idOpcao] = (votos[idOpcao] || 0) + 1;
         localStorage.setItem('votos_live', JSON.stringify(votos));
-        
         localStorage.setItem('jaVotouLive', 'true');
         
         atualizarTela();
     }
 
-    // Sistema de sugestões
     let textoTemporario = "";
 
     function proximoPasso() {
@@ -243,7 +239,6 @@
         atualizarTela();
     }
 
-    // Painel Admin
     function fazerLogin() {
         let user = prompt("Usuário:");
         let pass = prompt("Senha:");
